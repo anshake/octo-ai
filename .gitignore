@@ -31,3 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Project specific ###
+*.log
+.DS_Store
+application-local.yaml
+playwright-session/
