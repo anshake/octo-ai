@@ -1,3 +1,13 @@
 spring:
   application:
     name: local-assistant
+
+  threads:
+    virtual:
+      enabled: true
+
+gateway:
+  telegram:
+    bot-token: ${TELEGRAM_BOT_TOKEN}
+    allowed-user-ids:
+      - ${TELEGRAM_ALLOWED_USER_ID}
