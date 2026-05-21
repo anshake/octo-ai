@@ -81,7 +81,7 @@ public class PlanExecutor
         }
 
         var byId = plan.agentTasks().stream()
-                       .collect(Collectors.toMap(AgentTask::id, t -> t, (a, b) -> a));
+                       .collect(Collectors.toMap(AgentTask::id, t -> t, (a, _) -> a));
         var results = new ConcurrentHashMap<AgentTask, TaskResult>();
         var futures = new HashMap<AgentTask, CompletableFuture<Void>>();
 
