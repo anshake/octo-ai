@@ -15,12 +15,9 @@ import org.telegram.telegrambots.longpolling.TelegramBotsLongPollingApplication;
 import org.telegram.telegrambots.longpolling.util.LongPollingSingleThreadUpdateConsumer;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
-import org.telegram.telegrambots.meta.api.objects.message.Message;
 import org.telegram.telegrambots.meta.generics.TelegramClient;
 
 import java.time.Instant;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -35,18 +32,14 @@ public class TelegramGateway implements LongPollingSingleThreadUpdateConsumer
 
     private TelegramBotsLongPollingApplication botsApplication;
     private TelegramClient client;
-    private Set<Long> allowedUserIds;
 
     @PostConstruct
     void start() throws Exception
     {
-        allowedUserIds = properties.allowedUserIds() == null
-                ? Set.of()
-                : properties.allowedUserIds().stream().collect(Collectors.toUnmodifiableSet());
         client = new OkHttpTelegramClient(properties.botToken());
         botsApplication = new TelegramBotsLongPollingApplication();
         botsApplication.registerBot(properties.botToken(), this);
-        log.info("Telegram gateway started; {} allowed user id(s)", allowedUserIds.size());
+        log.info("Telegram gateway started; {} allowed user id(s)", properties.allowedUserIds());
     }
 
     @PreDestroy
@@ -61,18 +54,19 @@ public class TelegramGateway implements LongPollingSingleThreadUpdateConsumer
     @Override
     public void consume(Update update)
     {
-        Message message = update.getMessage();
+        final var message = update.getMessage();
         if (message == null || !message.hasText())
         {
             return;
         }
-        Long userId = message.getFrom() == null ? null : message.getFrom().getId();
-        if (userId == null || !allowedUserIds.contains(userId))
+
+        final var userId = message.getFrom() == null ? null : message.getFrom().getId();
+        if (userId == null || !properties.allowedUserIds().contains(userId))
         {
             log.debug("Dropping update from unauthorized user id={}", userId);
             return;
         }
-        InboundMessage inbound = new InboundMessage(
+        final var inbound = new InboundMessage(
                 new ConversationId(GATEWAY_ID, String.valueOf(userId)),
                 message.getText(),
                 Instant.now()

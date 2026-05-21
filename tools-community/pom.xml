@@ -6,30 +6,21 @@
         <artifactId>local-assistant</artifactId>
         <version>0.0.1-SNAPSHOT</version>
     </parent>
-    <artifactId>tool-browser</artifactId>
-
-    <properties>
-        <java.version>25</java.version>
-        <playwright.version>1.52.0</playwright.version>
-    </properties>
+    <artifactId>tools-community</artifactId>
 
     <dependencies>
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-model</artifactId>
-            <version>${spring-ai.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.microsoft.playwright</groupId>
-            <artifactId>playwright</artifactId>
-            <version>${playwright.version}</version>
+            <groupId>org.springaicommunity</groupId>
+            <artifactId>spring-ai-agent-utils</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.projectlombok</groupId>
-            <artifactId>lombok</artifactId>
-            <scope>provided</scope>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter</artifactId>
         </dependency>
     </dependencies>
-
 
 </project>

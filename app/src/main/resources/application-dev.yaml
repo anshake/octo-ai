@@ -1,0 +1,18 @@
+spring:
+
+  docker:
+    compose:
+      lifecycle-management: start_only
+      file: docker-compose-dev.yml
+
+  datasource:
+    url: jdbc:postgresql://localhost:5532/shake-assistant-db
+    username: shake
+    password: dev-only
+
+
+logging:
+  level:
+    org.springframework.ai: DEBUG
+    org.springframework.ai.ollama: DEBUG
+    org.springaicommunity.agent: DEBUG

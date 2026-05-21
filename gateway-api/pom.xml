@@ -8,8 +8,4 @@
     </parent>
     <artifactId>gateway-api</artifactId>
 
-    <properties>
-        <java.version>25</java.version>
-    </properties>
-
 </project>
