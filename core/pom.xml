@@ -10,7 +10,7 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.shake.assistant</groupId>
+            <groupId>com.shake.octo</groupId>
             <artifactId>gateway-api</artifactId>
             <version>${project.version}</version>
         </dependency>

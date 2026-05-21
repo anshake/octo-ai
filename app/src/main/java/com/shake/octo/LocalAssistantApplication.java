@@ -12,7 +12,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class LocalAssistantApplication
 {
 
-    public static void main(String[] args)
+    static void main(String[] args)
     {
         SpringApplication.run(LocalAssistantApplication.class, args);
     }

@@ -10,17 +10,17 @@
 
     <dependencies>
         <dependency>
-            <groupId>com.shake.assistant</groupId>
+            <groupId>com.shake.octo</groupId>
             <artifactId>core</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.shake.assistant</groupId>
+            <groupId>com.shake.octo</groupId>
             <artifactId>gateway-telegram</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.shake.assistant</groupId>
+            <groupId>com.shake.octo</groupId>
             <artifactId>tools-community</artifactId>
             <version>${project.version}</version>
         </dependency>
