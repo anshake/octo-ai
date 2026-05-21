@@ -1,16 +1,17 @@
-package com.shake.assistant.orchestrator;
+package com.shake.octo.orchestrator;
 
 import org.springframework.ai.tool.annotation.ToolParam;
 
 import java.util.List;
 
 public record AgentTask(
+        @ToolParam(description = "unique id for this task, referenced by other tasks in their dependencies")
+        String id,
         @ToolParam(description = "name of the agent that is going to perform the task")
         String agentName,
         @ToolParam(description = "the prompt describing the work this subagent should do")
         String task,
-        @ToolParam(description = "list of dependencies for the task; dependent tasks can not start until this task is" +
-                " finished", required = false)
-        List<AgentTask> dependencies)
+        @ToolParam(description = "ids of tasks that must finish before this one starts", required = false)
+        List<String> dependencies)
 {
 }

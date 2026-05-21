@@ -1,4 +1,4 @@
-package com.shake.assistant.orchestrator;
+package com.shake.octo.orchestrator;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springaicommunity.agent.tools.task.claude.ClaudeSubagentDefinition;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -79,38 +80,46 @@ public class PlanExecutor
             return "Plan is empty.";
         }
 
+        var byId = plan.agentTasks().stream()
+                       .collect(Collectors.toMap(AgentTask::id, t -> t, (a, b) -> a));
         var results = new ConcurrentHashMap<AgentTask, TaskResult>();
         var futures = new HashMap<AgentTask, CompletableFuture<Void>>();
 
         try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor())
         {
-            plan.agentTasks().forEach(t -> scheduleTask(t, futures, results, executor));
+            plan.agentTasks().forEach(t -> scheduleTask(t, byId, futures, results, executor));
             CompletableFuture.allOf(futures.values().toArray(CompletableFuture[]::new)).join();
         }
 
-        return aggregate(plan, results);
+        return aggregate(plan, byId, results);
     }
 
     private CompletableFuture<Void> scheduleTask(AgentTask task,
+                                                 Map<String, AgentTask> byId,
                                                  Map<AgentTask, CompletableFuture<Void>> futures,
                                                  Map<AgentTask, TaskResult> results,
                                                  ExecutorService executor)
     {
-        return futures.computeIfAbsent(task, t -> {
-            List<AgentTask> deps = dependenciesOf(t);
-            var gate = deps.isEmpty()
-                    ? CompletableFuture.<Void>completedFuture(null)
-                    : CompletableFuture.allOf(deps.stream()
-                                                  .map(d -> scheduleTask(d, futures, results, executor))
-                                                  .toArray(CompletableFuture[]::new));
-            return gate.thenRunAsync(() -> runTask(t, results), executor);
-        });
+        CompletableFuture<Void> existing = futures.get(task);
+        if (existing != null)
+        {
+            return existing;
+        }
+        List<AgentTask> deps = dependenciesOf(task, byId);
+        var gate = deps.isEmpty()
+                ? CompletableFuture.<Void>completedFuture(null)
+                : CompletableFuture.allOf(deps.stream()
+                                              .map(d -> scheduleTask(d, byId, futures, results, executor))
+                                              .toArray(CompletableFuture[]::new));
+        var future = gate.thenRunAsync(() -> runTask(task, byId, results), executor);
+        futures.put(task, future);
+        return future;
     }
 
-    private void runTask(AgentTask task, Map<AgentTask, TaskResult> results)
+    private void runTask(AgentTask task, Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
     {
         String agentName = task.agentName();
-        for (AgentTask dep : dependenciesOf(task))
+        for (AgentTask dep : dependenciesOf(task, byId))
         {
             if (results.get(dep).status() != Status.SUCCEEDED)
             {
@@ -121,7 +130,7 @@ public class PlanExecutor
             }
         }
 
-        ClaudeSubagentDefinition def = definitions.get(agentName);
+        final var def = definitions.get(agentName);
         if (def == null)
         {
             results.put(task, new TaskResult(Status.FAILED, "unknown agent: " + agentName));
@@ -137,13 +146,13 @@ public class PlanExecutor
 
         try
         {
-            String prompt = composePrompt(task, results);
+            String prompt = composePrompt(task, byId, results);
             log.debug("Invoking agent={} prompt=\n{}", agentName, prompt);
             final var content = chatClient.prompt()
-                                       .system(def.getContent())
-                                       .toolCallbacks(toolsByAgent.get(agentName))
-                                       .user(prompt)
-                                       .call().content();
+                                          .system(def.getContent())
+                                          .toolCallbacks(toolsByAgent.get(agentName))
+                                          .user(prompt)
+                                          .call().content();
             results.put(task, new TaskResult(Status.SUCCEEDED, content));
             log.info("Task {} SUCCEEDED", agentName);
         }
@@ -155,14 +164,14 @@ public class PlanExecutor
         }
     }
 
-    private String composePrompt(AgentTask task, Map<AgentTask, TaskResult> results)
+    private String composePrompt(AgentTask task, Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
     {
-        List<AgentTask> deps = dependenciesOf(task);
+        List<AgentTask> deps = dependenciesOf(task, byId);
         if (deps.isEmpty())
         {
             return task.task();
         }
-        StringBuilder sb = new StringBuilder("=== Inputs from prior tasks ===\n");
+        final var sb = new StringBuilder("=== Inputs from prior tasks ===\n");
         for (AgentTask p : deps)
         {
             String content = results.get(p).result();
@@ -173,10 +182,10 @@ public class PlanExecutor
         return sb.toString();
     }
 
-    private String aggregate(ExecutionPlan plan, Map<AgentTask, TaskResult> results)
+    private String aggregate(ExecutionPlan plan, Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
     {
         Set<AgentTask> intermediate = results.keySet().stream()
-                                             .flatMap(t -> dependenciesOf(t).stream())
+                                             .flatMap(t -> dependenciesOf(t, byId).stream())
                                              .collect(Collectors.toSet());
 
         String body = results.entrySet().stream()
@@ -184,7 +193,7 @@ public class PlanExecutor
                              .map(e -> format(e.getKey(), e.getValue()))
                              .collect(Collectors.joining("\n\n"));
 
-        return "Plan: " + plan.description() + "\n\n" + body;
+        return "Plan: " + plan.executionSummary() + "\n\n" + body;
     }
 
     private static String format(AgentTask task, TaskResult r)
@@ -192,15 +201,21 @@ public class PlanExecutor
         final var tail = switch (r.status())
         {
             case SUCCEEDED -> "(SUCCEEDED)\n" + r.result();
-            case FAILED -> "(FAILED: " + r.result() + ")";
-            case SKIPPED -> "(SKIPPED: " + r.result() + ")";
+            default -> "(" + r.status() + " " + r.result() + ")";
         };
         return "[" + task.agentName() + "] " + tail;
     }
 
-    private static List<AgentTask> dependenciesOf(AgentTask task)
+    private static List<AgentTask> dependenciesOf(AgentTask task, Map<String, AgentTask> byId)
     {
-        return task.dependencies() == null ? List.of() : task.dependencies();
+        if (task.dependencies() == null)
+        {
+            return List.of();
+        }
+        return task.dependencies().stream()
+                   .map(byId::get)
+                   .filter(Objects::nonNull)
+                   .toList();
     }
 
     private enum Status

@@ -1,4 +1,4 @@
-package com.shake.assistant.gateway;
+package com.shake.octo.gateway;
 
 import java.time.Instant;
 

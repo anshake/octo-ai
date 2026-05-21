@@ -1,4 +1,4 @@
-package com.shake.assistant.tools.community;
+package com.shake.octo.tools.community;
 
 import org.springaicommunity.agent.tools.FileSystemTools;
 import org.springaicommunity.agent.tools.GlobTool;

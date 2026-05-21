@@ -1,6 +1,6 @@
-package com.shake.assistant;
+package com.shake.octo;
 
-import com.shake.assistant.gateway.telegram.TelegramProperties;
+import com.shake.octo.gateway.telegram.TelegramProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;

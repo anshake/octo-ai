@@ -1,4 +1,4 @@
-package com.shake.assistant.gateway.telegram;
+package com.shake.octo.gateway.telegram;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

@@ -8,12 +8,12 @@
         <version>4.0.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
-    <groupId>com.shake.assistant</groupId>
-    <artifactId>local-assistant</artifactId>
+    <groupId>com.shake.octo</groupId>
+    <artifactId>octo-ai</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
-    <name>local-assistant</name>
-    <description>local-assistant</description>
+    <name>octo</name>
+    <description>Octo AI</description>
 
     <modules>
         <module>gateway-api</module>

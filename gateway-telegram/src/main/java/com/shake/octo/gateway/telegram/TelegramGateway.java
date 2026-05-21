@@ -1,8 +1,8 @@
-package com.shake.assistant.gateway.telegram;
+package com.shake.octo.gateway.telegram;
 
-import com.shake.assistant.gateway.ConversationId;
-import com.shake.assistant.gateway.InboundMessage;
-import com.shake.assistant.gateway.OutboundReply;
+import com.shake.octo.gateway.ConversationId;
+import com.shake.octo.gateway.InboundMessage;
+import com.shake.octo.gateway.OutboundReply;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
