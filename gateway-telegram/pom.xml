@@ -9,7 +9,7 @@
     <artifactId>gateway-telegram</artifactId>
 
     <properties>
-        <telegrambots.version>7.11.0</telegrambots.version>
+        <telegrambots.version>9.6.0</telegrambots.version>
     </properties>
 
     <dependencies>
