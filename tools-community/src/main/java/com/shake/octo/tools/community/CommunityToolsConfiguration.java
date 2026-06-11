@@ -22,7 +22,7 @@ public class CommunityToolsConfiguration
         Path workingDirectory = Paths.get(System.getProperty("user.dir"));
         var globTool = GlobTool.builder().workingDirectory(workingDirectory).build();
         var grepTool = GrepTool.builder().workingDirectory(workingDirectory).build();
-        var fileSystemTools = new FileSystemTools.Builder().build();
+        var fileSystemTools = FileSystemTools.builder().allowedDirectories(workingDirectory).build();
         var listDirectoryTool = ListDirectoryTool.builder().workingDirectory(workingDirectory).build();
         return List.of(ToolCallbacks.from(globTool, grepTool, fileSystemTools, listDirectoryTool));
     }
