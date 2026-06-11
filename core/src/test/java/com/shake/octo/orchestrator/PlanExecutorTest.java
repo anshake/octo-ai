@@ -4,7 +4,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
-import org.springframework.ai.tool.ToolCallback;
 import org.springframework.core.io.ClassPathResource;
 
 import java.util.List;
@@ -37,7 +36,7 @@ class PlanExecutorTest
 
         when(chatClient.prompt()).thenReturn(reqSpec);
         when(reqSpec.system(anyString())).thenReturn(reqSpec);
-        when(reqSpec.toolCallbacks(any(ToolCallback[].class))).thenReturn(reqSpec);
+        when(reqSpec.tools(any(Object[].class))).thenReturn(reqSpec);
         // Each user(...) call records the prompt and returns its own tail bound to that
         // prompt's reply, so parallel tasks stay deterministic without shared mutable state.
         when(reqSpec.user(anyString())).thenAnswer(inv -> {
