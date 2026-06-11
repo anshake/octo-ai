@@ -52,7 +52,8 @@ public class OrchestratorConfig
                 results of the leaf tasks.
                 
                 Available subagents (use these exact names as `agentName`):
-                %s""".formatted(planExecutor.catalog());
+                <available_subagents>%s</available_subagents>
+                """.formatted(planExecutor.catalog());
 
         BiFunction<ExecutionPlan, ToolContext, String> execute = (plan, toolContext) -> {
             if (toolContext.getContext().get(Orchestrator.CTX_CONVERSATION) instanceof ConversationId to)
@@ -70,7 +71,7 @@ public class OrchestratorConfig
 
     private static String renderPlan(ExecutionPlan plan)
     {
-        return "Here's my plan: " + plan.executionSummary();
+        return plan.executionSummary();
     }
 
     @Bean
@@ -84,7 +85,7 @@ public class OrchestratorConfig
                 .defaultAdvisors(
                         MessageChatMemoryAdvisor.builder(chatMemory).build()
                 )
-                .defaultToolCallbacks(executePlanTool(planExecutor, events))
+                .defaultTools(executePlanTool(planExecutor, events))
                 .defaultSystem(systemPrompt)
                 .defaultAdvisors(new SimpleLoggerAdvisor())
                 .defaultOptions(AnthropicChatOptions

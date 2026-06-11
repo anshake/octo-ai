@@ -150,7 +150,7 @@ public class PlanExecutor
             log.debug("Invoking agent={} prompt=\n{}", agentName, prompt);
             final var content = chatClient.prompt()
                                           .system(def.getContent())
-                                          .toolCallbacks(toolsByAgent.get(agentName))
+                                          .tools((Object[]) toolsByAgent.get(agentName))
                                           .user(prompt)
                                           .call().content();
             results.put(task, new TaskResult(Status.SUCCEEDED, content));
