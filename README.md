@@ -38,8 +38,6 @@ Adding a new agent means writing one more file like these (no code, for most add
 
 ## What's under the hood
 
-You don't need to know any of this to understand the project, but for the curious:
-
 - Uses Anthropic Haiku by default. You bring your own API key.
 - Built in Java with Spring Boot 4 and Spring AI 2.
 - The channels, subagents, and tools are each in their own module so they can grow independently.
