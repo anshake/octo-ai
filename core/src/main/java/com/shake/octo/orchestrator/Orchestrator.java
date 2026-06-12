@@ -11,16 +11,15 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
-
-import java.util.Map;
+import org.springframework.util.StringUtils;
 
 /**
  * Entry point for user messages. Listens for {@link com.shake.octo.gateway.InboundMessage} events,
  * forwards each to the LLM via {@link ChatClient}, and publishes the reply as an
  * {@link com.shake.octo.gateway.OutboundReply} event.
  *
- * <p>The LLM is configured with the {@code executePlan} tool, so it can decompose complex
- * requests into an {@link ExecutionPlan} of subagent tasks instead of responding directly.
+ * <p>The LLM always produces an {@link ExecutionPlan} as structured output — it cannot answer
+ * directly. The plan is executed by {@link PlanExecutor} and its result is relayed back.
  * Per-conversation memory is maintained via {@link org.springframework.ai.chat.memory.ChatMemory}.
  */
 @Slf4j
@@ -29,9 +28,8 @@ import java.util.Map;
 public class Orchestrator
 {
 
-    public static final String CTX_CONVERSATION = "conversationId";
-
     private final ChatClient orchestratorChatClient;
+    private final PlanExecutor planExecutor;
     private final ApplicationEventPublisher events;
 
     @Async
@@ -54,12 +52,31 @@ public class Orchestrator
 
     private String call(ConversationId conversationId, String text)
     {
-        return orchestratorChatClient.prompt()
-                                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId.externalId()))
-                                     .toolContext(Map.of(CTX_CONVERSATION, conversationId))
-                                     .user(text)
-                                     .call()
-                                     .content();
+        ExecutionPlan plan = orchestratorChatClient.prompt()
+                                                   .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId.externalId()))
+                                                   .user(text)
+                                                   .call()
+                                                   .entity(ExecutionPlan.class);
+
+        if (plan == null)
+        {
+            return "Sorry, I couldn't process that request.";
+        }
+        // No subagent fits: the model leaves agentTasks empty and explains in the summary.
+        if (plan.agentTasks() == null || plan.agentTasks().isEmpty())
+        {
+            return StringUtils.hasText(plan.executionSummary())
+                    ? plan.executionSummary()
+                    : "No subagent can handle that request.";
+        }
+
+        // Let the user see the plan before it runs; the final reply follows from onInbound.
+        if (StringUtils.hasText(plan.executionSummary()))
+        {
+            events.publishEvent(new OutboundReply(conversationId, plan.executionSummary()));
+        }
+
+        return planExecutor.execute(plan);
     }
 
 }

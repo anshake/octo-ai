@@ -20,8 +20,8 @@ What happens when you send a message:
 3. Each subagent is given its own goal.
 4. The results are then aggregated and sent back to you on the same channel.
 
-The only thing AI does at the top level is draw up the plan. The Orchestrator hands it back through its single tool, 
-`executePlan`, which runs the subagent tasks. Each subagent runs in full isolation: its own fresh context, its own system prompt, and its own fixed set of tools, all defined up front in its file rather than chosen at runtime. None of them see each other's conversations or memory; they receive only the inputs the plan passes them. What's *not* AI is the glue: scheduling the tasks and the tools themselves (reading and writing files) are plain code.
+The only thing AI does at the top level is draw up the plan. The Orchestrator's reply *is* the plan: it is
+produced as structured output, so the Orchestrator can never skip planning and answer directly — plain code then runs the subagent tasks. Each subagent runs in full isolation: its own fresh context, its own system prompt, and its own fixed set of tools, all defined up front in its file rather than chosen at runtime. None of them see each other's conversations or memory; they receive only the inputs the plan passes them. What's *not* AI is the glue: scheduling the tasks and the tools themselves (reading and writing files) are plain code.
 
 You can run the whole thing inside a Docker container if you want stronger isolation and to keep it away from the 
 rest of your machine.

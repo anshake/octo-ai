@@ -110,7 +110,7 @@ public class PlanExecutor
             CompletableFuture.allOf(futures.values().toArray(CompletableFuture[]::new)).join();
         }
 
-        var result = aggregate(plan, byId, results);
+        var result = aggregate(byId, results);
         log.info("Plan execution finished, returning result to orchestrator:\n{}", result);
         return result;
     }
@@ -203,18 +203,25 @@ public class PlanExecutor
         return sb.toString();
     }
 
-    private String aggregate(ExecutionPlan plan, Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
+    private String aggregate(Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
     {
         final Set<AgentTask> intermediate = results.keySet().stream()
                                                    .flatMap(t -> dependenciesOf(t, byId).stream())
                                                    .collect(Collectors.toSet());
 
-        var body = results.entrySet().stream()
-                          .filter(e -> !intermediate.contains(e.getKey()))
-                          .map(e -> "[" + e.getKey().agentName() + "] " + e.getValue().format())
-                          .collect(Collectors.joining("\n\n"));
+        return results.entrySet().stream()
+                      .filter(e -> !intermediate.contains(e.getKey()))
+                      .map(e -> render(e.getKey(), e.getValue()))
+                      .collect(Collectors.joining("\n\n"));
+    }
 
-        return "Plan: " + plan.executionSummary() + "\n" + body;
+    private static String render(AgentTask task, TaskResult result)
+    {
+        if (result.status() == Status.SUCCEEDED)
+        {
+            return result.result();
+        }
+        return task.agentName() + " " + result.status().name().toLowerCase() + ": " + result.result();
     }
 
     private static List<AgentTask> dependenciesOf(AgentTask task, Map<String, AgentTask> byId)
@@ -234,9 +241,5 @@ public class PlanExecutor
 
     private record TaskResult(Status status, String result)
     {
-        String format()
-        {
-            return "(" + status + ")\n" + result;
-        }
     }
 }
