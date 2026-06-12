@@ -5,7 +5,6 @@ import org.springaicommunity.agent.tools.task.claude.ClaudeSubagentDefinition;
 import org.springaicommunity.agent.tools.task.claude.ClaudeSubagentReferences;
 import org.springaicommunity.agent.tools.task.claude.ClaudeSubagentResolver;
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
@@ -52,7 +51,7 @@ public class PlanExecutor
     {
         this.chatClient = chatClientBuilder
 //                .defaultAdvisors(new SimpleLoggerAdvisor())
-                .build();
+            .build();
 
         var resolver = new ClaudeSubagentResolver();
         for (var ref : ClaudeSubagentReferences.fromResources(agentPaths))
