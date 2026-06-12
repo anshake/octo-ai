@@ -51,7 +51,7 @@ public class PlanExecutor
                         @Value("classpath:agents") Resource agentPaths)
     {
         this.chatClient = chatClientBuilder
-                .defaultAdvisors(new SimpleLoggerAdvisor())
+//                .defaultAdvisors(new SimpleLoggerAdvisor())
                 .build();
 
         var resolver = new ClaudeSubagentResolver();
@@ -97,8 +97,6 @@ public class PlanExecutor
             return "Plan is empty.";
         }
 
-        log.info("Executing plan with {} task(s): {}", plan.agentTasks().size(), plan.executionSummary());
-
         var byId = plan.agentTasks().stream()
                        .collect(Collectors.toMap(AgentTask::id, t -> t, (a, _) -> a));
         var results = new ConcurrentHashMap<AgentTask, TaskResult>();
@@ -110,9 +108,7 @@ public class PlanExecutor
             CompletableFuture.allOf(futures.values().toArray(CompletableFuture[]::new)).join();
         }
 
-        var result = aggregate(byId, results);
-        log.info("Plan execution finished, returning result to orchestrator:\n{}", result);
-        return result;
+        return aggregate(byId, results);
     }
 
     private CompletableFuture<Void> scheduleTask(AgentTask task,

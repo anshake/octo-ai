@@ -44,7 +44,7 @@ public class OrchestratorConfig
                         MessageChatMemoryAdvisor.builder(chatMemory).build()
                 )
                 .defaultSystem(s -> s.text(systemPrompt).param("subagents", planExecutor.listAgents()))
-                .defaultAdvisors(new SimpleLoggerAdvisor())
+//                .defaultAdvisors(new SimpleLoggerAdvisor())
                 .defaultOptions(AnthropicChatOptions
                                         .builder()
                                         .cacheOptions(AnthropicCacheOptions
