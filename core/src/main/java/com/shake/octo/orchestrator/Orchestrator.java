@@ -14,6 +14,15 @@ import org.springframework.stereotype.Component;
 
 import java.util.Map;
 
+/**
+ * Entry point for user messages. Listens for {@link com.shake.octo.gateway.InboundMessage} events,
+ * forwards each to the LLM via {@link ChatClient}, and publishes the reply as an
+ * {@link com.shake.octo.gateway.OutboundReply} event.
+ *
+ * <p>The LLM is configured with the {@code executePlan} tool, so it can decompose complex
+ * requests into an {@link ExecutionPlan} of subagent tasks instead of responding directly.
+ * Per-conversation memory is maintained via {@link org.springframework.ai.chat.memory.ChatMemory}.
+ */
 @Slf4j
 @Component
 @RequiredArgsConstructor
@@ -22,7 +31,7 @@ public class Orchestrator
 
     public static final String CTX_CONVERSATION = "conversationId";
 
-    private final ChatClient chatClient;
+    private final ChatClient orchestratorChatClient;
     private final ApplicationEventPublisher events;
 
     @Async
@@ -45,12 +54,12 @@ public class Orchestrator
 
     private String call(ConversationId conversationId, String text)
     {
-        return chatClient.prompt()
-                         .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId.externalId()))
-                         .toolContext(Map.of(CTX_CONVERSATION, conversationId))
-                         .user(text)
-                         .call()
-                         .content();
+        return orchestratorChatClient.prompt()
+                                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId.externalId()))
+                                     .toolContext(Map.of(CTX_CONVERSATION, conversationId))
+                                     .user(text)
+                                     .call()
+                                     .content();
     }
 
 }

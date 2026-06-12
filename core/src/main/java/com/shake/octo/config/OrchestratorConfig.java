@@ -53,7 +53,7 @@ public class OrchestratorConfig
                 
                 Available subagents (use these exact names as `agentName`):
                 <available_subagents>%s</available_subagents>
-                """.formatted(planExecutor.catalog());
+                """.formatted(planExecutor.listAgents());
 
         BiFunction<ExecutionPlan, ToolContext, String> execute = (plan, toolContext) -> {
             if (toolContext.getContext().get(Orchestrator.CTX_CONVERSATION) instanceof ConversationId to)
@@ -75,11 +75,11 @@ public class OrchestratorConfig
     }
 
     @Bean
-    ChatClient chatClient(ChatClient.Builder builder,
-                          @Value("classpath:prompts/orchestrator.md") Resource systemPrompt,
-                          ChatMemory chatMemory,
-                          PlanExecutor planExecutor,
-                          ApplicationEventPublisher events)
+    ChatClient orchestratorChatClient(ChatClient.Builder builder,
+                                      @Value("classpath:prompts/orchestrator.md") Resource systemPrompt,
+                                      ChatMemory chatMemory,
+                                      PlanExecutor planExecutor,
+                                      ApplicationEventPublisher events)
     {
         return builder
                 .defaultAdvisors(

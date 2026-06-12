@@ -10,6 +10,7 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
 import java.util.List;
@@ -22,6 +23,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+/**
+ * Executes an {@link ExecutionPlan} produced by the orchestrator LLM.
+ *
+ * <p>On startup, loads subagent definitions from {@code classpath:agents} and maps each
+ * agent's declared tool names to the available {@link ToolCallback} beans.
+ *
+ * <p>At runtime, {@link #execute(ExecutionPlan)} schedules each {@link AgentTask} on a
+ * virtual-thread executor. Tasks with no dependencies run immediately in parallel; tasks
+ * that declare dependencies wait for their upstream tasks to finish and receive their
+ * outputs prepended to their prompt. Only leaf tasks (those not depended on by others)
+ * are included in the aggregated result returned to the orchestrator.
+ *
+ * <p>A task is skipped if any of its upstream tasks failed.
+ */
 @Slf4j
 @Component
 public class PlanExecutor
@@ -35,7 +50,9 @@ public class PlanExecutor
                         List<ToolCallback> availableTools,
                         @Value("classpath:agents") Resource agentPaths)
     {
-        this.chatClient = chatClientBuilder.defaultAdvisors(new SimpleLoggerAdvisor()).build();
+        this.chatClient = chatClientBuilder
+                .defaultAdvisors(new SimpleLoggerAdvisor())
+                .build();
 
         var resolver = new ClaudeSubagentResolver();
         for (var ref : ClaudeSubagentReferences.fromResources(agentPaths))
@@ -44,7 +61,7 @@ public class PlanExecutor
             this.definitions.put(def.getName(), def);
         }
 
-        final var toolsByName = new HashMap<>();
+        Map<String, ToolCallback> toolsByName = new HashMap<>();
         for (ToolCallback t : availableTools)
         {
             toolsByName.put(t.getToolDefinition().name(), t);
@@ -54,7 +71,7 @@ public class PlanExecutor
         {
             this.toolsByAgent.put(def.getName(), def.tools().stream()
                                                     .map(toolsByName::get)
-                                                    .filter(java.util.Objects::nonNull)
+                                                    .filter(Objects::nonNull)
                                                     .toArray(ToolCallback[]::new));
         }
 
@@ -63,9 +80,9 @@ public class PlanExecutor
                  availableTools.stream().map(t -> t.getToolDefinition().name()).toList());
     }
 
-    public String catalog()
+    public String listAgents()
     {
-        StringBuilder sb = new StringBuilder();
+        final var sb = new StringBuilder();
         for (var def : definitions.values())
         {
             sb.append("- ").append(def.getName()).append(": ").append(def.getDescription()).append('\n');
@@ -80,6 +97,8 @@ public class PlanExecutor
             return "Plan is empty.";
         }
 
+        log.info("Executing plan with {} task(s): {}", plan.agentTasks().size(), plan.executionSummary());
+
         var byId = plan.agentTasks().stream()
                        .collect(Collectors.toMap(AgentTask::id, t -> t, (a, _) -> a));
         var results = new ConcurrentHashMap<AgentTask, TaskResult>();
@@ -91,7 +110,9 @@ public class PlanExecutor
             CompletableFuture.allOf(futures.values().toArray(CompletableFuture[]::new)).join();
         }
 
-        return aggregate(plan, byId, results);
+        var result = aggregate(plan, byId, results);
+        log.info("Plan execution finished, returning result to orchestrator:\n{}", result);
+        return result;
     }
 
     private CompletableFuture<Void> scheduleTask(AgentTask task,
@@ -125,7 +146,7 @@ public class PlanExecutor
             {
                 String reason = "upstream " + dep.agentName() + " failed";
                 results.put(task, new TaskResult(Status.SKIPPED, reason));
-                log.info("Task {} SKIPPED ({})", agentName, reason);
+                log.warn("Task {} SKIPPED ({})", agentName, reason);
                 return;
             }
         }
@@ -137,7 +158,7 @@ public class PlanExecutor
             log.warn("Task FAILED: unknown agent: {}", agentName);
             return;
         }
-        if (task.task() == null || task.task().isBlank())
+        if (!StringUtils.hasText(task.taskPrompt()))
         {
             results.put(task, new TaskResult(Status.FAILED, "task description is empty"));
             log.warn("Task {} FAILED: task description is empty", agentName);
@@ -146,7 +167,7 @@ public class PlanExecutor
 
         try
         {
-            String prompt = composePrompt(task, byId, results);
+            var prompt = composePrompt(task, byId, results);
             log.debug("Invoking agent={} prompt=\n{}", agentName, prompt);
             final var content = chatClient.prompt()
                                           .system(def.getContent())
@@ -166,10 +187,10 @@ public class PlanExecutor
 
     private String composePrompt(AgentTask task, Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
     {
-        List<AgentTask> deps = dependenciesOf(task, byId);
+        final List<AgentTask> deps = dependenciesOf(task, byId);
         if (deps.isEmpty())
         {
-            return task.task();
+            return task.taskPrompt();
         }
         final var sb = new StringBuilder("=== Inputs from prior tasks ===\n");
         for (AgentTask p : deps)
@@ -178,32 +199,22 @@ public class PlanExecutor
             sb.append('[').append(p.agentName()).append("] ")
               .append(content == null ? "" : content).append("\n\n");
         }
-        sb.append("=== Your task ===\n").append(task.task());
+        sb.append("=== Your task ===\n").append(task.taskPrompt());
         return sb.toString();
     }
 
     private String aggregate(ExecutionPlan plan, Map<String, AgentTask> byId, Map<AgentTask, TaskResult> results)
     {
-        Set<AgentTask> intermediate = results.keySet().stream()
-                                             .flatMap(t -> dependenciesOf(t, byId).stream())
-                                             .collect(Collectors.toSet());
+        final Set<AgentTask> intermediate = results.keySet().stream()
+                                                   .flatMap(t -> dependenciesOf(t, byId).stream())
+                                                   .collect(Collectors.toSet());
 
-        String body = results.entrySet().stream()
-                             .filter(e -> !intermediate.contains(e.getKey()))
-                             .map(e -> format(e.getKey(), e.getValue()))
-                             .collect(Collectors.joining("\n\n"));
+        var body = results.entrySet().stream()
+                          .filter(e -> !intermediate.contains(e.getKey()))
+                          .map(e -> "[" + e.getKey().agentName() + "] " + e.getValue().format())
+                          .collect(Collectors.joining("\n\n"));
 
-        return "Plan: " + plan.executionSummary() + "\n\n" + body;
-    }
-
-    private static String format(AgentTask task, TaskResult r)
-    {
-        final var tail = switch (r.status())
-        {
-            case SUCCEEDED -> "(SUCCEEDED)\n" + r.result();
-            default -> "(" + r.status() + " " + r.result() + ")";
-        };
-        return "[" + task.agentName() + "] " + tail;
+        return "Plan: " + plan.executionSummary() + "\n" + body;
     }
 
     private static List<AgentTask> dependenciesOf(AgentTask task, Map<String, AgentTask> byId)
@@ -221,5 +232,11 @@ public class PlanExecutor
     private enum Status
     {SUCCEEDED, FAILED, SKIPPED}
 
-    private record TaskResult(Status status, String result) {}
+    private record TaskResult(Status status, String result)
+    {
+        String format()
+        {
+            return "(" + status + ")\n" + result;
+        }
+    }
 }
