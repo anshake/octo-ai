@@ -8,6 +8,8 @@ Telegram is the only supported channel for now.
 
 ## The main idea
 
+![Octo AI architecture](architecture.png)
+
 - **The Orchestrator** sits at the top. It does no work itself. Instead it reads your request and decides who 
   handles it.
 - **Subagents** each pursue one goal. A subagent is given a goal and runs it in an isolated context (a fresh conversation, no memory of other tasks) with only the tools it needs to reach that goal.

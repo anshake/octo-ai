@@ -49,6 +49,7 @@ public class PlanExecutor
                         List<ToolCallback> availableTools,
                         @Value("classpath:agents") Resource agentPaths)
     {
+        // new clean ChatModel instance
         this.chatClient = chatClientBuilder
 //                .defaultAdvisors(new SimpleLoggerAdvisor())
             .build();
