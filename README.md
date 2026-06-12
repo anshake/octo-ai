@@ -8,7 +8,7 @@ Telegram is the only supported channel for now.
 
 ## The main idea
 
-![Octo AI architecture](architecture.png)
+![Octo AI architecture](assets/architecture.png)
 
 - **The Orchestrator** sits at the top. It does no work itself. Instead it reads your request and decides who 
   handles it.
